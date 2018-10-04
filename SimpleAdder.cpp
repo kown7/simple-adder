@@ -32,24 +32,28 @@ public:
     sa.b(b);
     sa.OutVld(OutVld);
     sa.c(c);
+
+    Clr.write(0);
   };
 
   void add(int a_in, int b_in) {
     if (has_value) { wait(read_ev); }
-    c_local = a_in + b_in;
-    has_value = 1;
+    wait(Clk.posedge_event());
 
-    Clr.write(0);
+    c_local = a_in + b_in;
     a.write(a_in);
     b.write(b_in);
     InVld.write(1);
-    wait(100, SC_NS); // Wait rising_edge(Clk)
+    wait(Clk.posedge_event());
+
+    has_value = 1;
     write_ev.notify();
     InVld.write(0);
   }
 
   int get() {
     if (not has_value) { wait(write_ev); }
+    wait(Clk.posedge_event());
     int l = c_local;
 
     cout<<"@" << sc_time_stamp() << " :: get "<< l <<endl;
@@ -131,7 +135,6 @@ class consumer : public sc_module
          cout << c << endl << flush;
        }
        cout << "Consumer is done" << endl << flush;
-       sc_stop();
      }
 };
 
