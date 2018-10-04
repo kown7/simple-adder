@@ -1,5 +1,7 @@
 #include <systemc.h>
 
+#include "SimpleAdderRtl.hpp"
+
 
 class AddNumIf : virtual public sc_interface
 {
@@ -13,35 +15,69 @@ public:
   virtual int get() = 0;
 };
 
+
 class SimpleAdderIf : public sc_channel, public AddNumIf, public ResNumIf
 {
 public:
   SimpleAdderIf(sc_module_name name) :
     sc_channel(name),
-    has_value(0) {};
-  
-  void add(int a, int b) {
+    has_value(0),
+    Clk("mainclock", 100, SC_NS),
+    sa("SimpleAdderRTL")
+  {
+    sa.Clk(Clk);
+    sa.Clr(Clr);
+    sa.InVld(InVld);
+    sa.a(a);
+    sa.b(b);
+    sa.OutVld(OutVld);
+    sa.c(c);
+  };
+
+  void add(int a_in, int b_in) {
     if (has_value) { wait(read_ev); }
-    c = a + b;
+    c_local = a_in + b_in;
     has_value = 1;
+
+    Clr.write(0);
+    a.write(a_in);
+    b.write(b_in);
+    InVld.write(1);
+    wait(100, SC_NS); // Wait rising_edge(Clk)
     write_ev.notify();
+    InVld.write(0);
   }
 
   int get() {
     if (not has_value) { wait(write_ev); }
-    int l = c;
+    int l = c_local;
+
     cout<<"@" << sc_time_stamp() << " :: get "<< l <<endl;
+    cout<<"@" << sc_time_stamp() << " :: rtl "<< c.read().to_uint() <<endl;
+    assert(l == c.read());
+
     has_value = 0;
-    read_ev.notify();    
+    read_ev.notify();
     return l;
   }
 
 private:
-  int c;
+  int c_local;
 
   bool has_value;
   sc_event read_ev;
   sc_event write_ev;
+
+
+  sc_clock Clk;
+  sc_signal<bool> Clr;
+  sc_signal<bool> InVld;
+  sc_signal<sc_lv<32>> a;
+  sc_signal<sc_lv<32>> b;
+  sc_signal<bool> OutVld;
+  sc_signal<sc_lv<32>> c;
+
+  SimpleAdderRtl sa;
 };
 
 
@@ -62,10 +98,14 @@ class producer : public sc_module
        int i = 0;
        int in_b[] = { 2, 3 };
        int in_a[] = { 12, 32 };
+
+       wait(500, SC_NS);
+
        for(int i = 0; i < 2; i++) {
          out->add(in_a[i], in_b[i]);
 	 wait(12.4, SC_US);
        }
+       cout << "Producer is done" << endl << flush;
      }
 };
 
@@ -86,10 +126,12 @@ class consumer : public sc_module
        int c = 1;
        cout << endl << endl;
 
-       while (c) {
+       for(int i = 0; i < 2; i++) {
          c = in->get();
          cout << c << endl << flush;
        }
+       cout << "Consumer is done" << endl << flush;
+       sc_stop();
      }
 };
 
@@ -103,7 +145,7 @@ class top : public sc_module
      top(sc_module_name name) : sc_module(name)
      {
        sa = new SimpleAdderIf("SimpleAdderIf1");
-       
+
        prod_inst = new producer("Producer");
        prod_inst->out(*sa);
 
@@ -111,10 +153,10 @@ class top : public sc_module
        cons_inst->in(*sa);
      }
 };
-				    
+
 
 int sc_main (int, char *[]) {
-   top top1("Top1");
-   sc_start();
-   return 0;
+  top top1("Top1");
+  sc_start();
+  return 0;
 }
