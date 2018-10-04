@@ -19,10 +19,10 @@ public:
 class SimpleAdderIf : public sc_channel, public AddNumIf, public ResNumIf
 {
 public:
-  SimpleAdderIf(sc_module_name name, sc_clock& ClkIn) :
+  SimpleAdderIf(sc_module_name name) :
     sc_channel(name),
     has_value(0),
-    Clk(ClkIn),
+    Clk("mainclock", 100, SC_NS),
     sa("SimpleAdderRTL")
   {
     sa.Clk(Clk);
@@ -73,7 +73,7 @@ private:
   sc_event write_ev;
 
 
-  sc_clock& Clk;
+  sc_clock Clk;
   sc_signal<bool> Clr;
   sc_signal<bool> InVld;
   sc_signal<sc_lv<32>> a;
@@ -141,7 +141,6 @@ class consumer : public sc_module
 class top : public sc_module
 {
 public:
-  sc_clock *clk;
   SimpleAdderIf *sa;
   producer *prod_inst;
   consumer *cons_inst;
@@ -149,9 +148,7 @@ public:
   top(sc_module_name name) : sc_module(name)
   {
     typedef top SC_CURRENT_USER_MODULE;
-
-    clk = new sc_clock("mainclock", 100, SC_NS);
-    sa = new SimpleAdderIf("SimpleAdderIf1", *clk);
+    sa = new SimpleAdderIf("SimpleAdderIf1");
 
     prod_inst = new producer("Producer");
     prod_inst->out(*sa);
