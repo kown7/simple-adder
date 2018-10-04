@@ -19,10 +19,10 @@ public:
 class SimpleAdderIf : public sc_channel, public AddNumIf, public ResNumIf
 {
 public:
-  SimpleAdderIf(sc_module_name name) :
+  SimpleAdderIf(sc_module_name name, sc_clock& ClkIn) :
     sc_channel(name),
     has_value(0),
-    Clk("mainclock", 100, SC_NS),
+    Clk(ClkIn),
     sa("SimpleAdderRTL")
   {
     sa.Clk(Clk);
@@ -73,7 +73,7 @@ private:
   sc_event write_ev;
 
 
-  sc_clock Clk;
+  sc_clock& Clk;
   sc_signal<bool> Clr;
   sc_signal<bool> InVld;
   sc_signal<sc_lv<32>> a;
@@ -140,21 +140,32 @@ class consumer : public sc_module
 
 class top : public sc_module
 {
-   public:
-     SimpleAdderIf *sa;
-     producer *prod_inst;
-     consumer *cons_inst;
+public:
+  sc_clock *clk;
+  SimpleAdderIf *sa;
+  producer *prod_inst;
+  consumer *cons_inst;
 
-     top(sc_module_name name) : sc_module(name)
-     {
-       sa = new SimpleAdderIf("SimpleAdderIf1");
+  top(sc_module_name name) : sc_module(name)
+  {
+    typedef top SC_CURRENT_USER_MODULE;
 
-       prod_inst = new producer("Producer");
-       prod_inst->out(*sa);
+    clk = new sc_clock("mainclock", 100, SC_NS);
+    sa = new SimpleAdderIf("SimpleAdderIf1", *clk);
 
-       cons_inst = new consumer("Consumer");
-       cons_inst->in(*sa);
-     }
+    prod_inst = new producer("Producer");
+    prod_inst->out(*sa);
+
+    cons_inst = new consumer("Consumer");
+    cons_inst->in(*sa);
+
+    SC_THREAD(clk_timeout);
+  }
+
+  void clk_timeout() {
+    wait(100, SC_MS);
+    sc_stop();
+  }
 };
 
 
