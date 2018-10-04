@@ -30,6 +30,7 @@ public:
   int get() {
     if (not has_value) { wait(write_ev); }
     int l = c;
+    cout<<"@" << sc_time_stamp() << " :: get "<< l <<endl;
     has_value = 0;
     read_ev.notify();    
     return l;
@@ -63,6 +64,7 @@ class producer : public sc_module
        int in_a[] = { 12, 32 };
        for(int i = 0; i < 2; i++) {
          out->add(in_a[i], in_b[i]);
+	 wait(12.4, SC_US);
        }
      }
 };
@@ -86,7 +88,7 @@ class consumer : public sc_module
 
        while (c) {
          c = in->get();
-         cout << c << flush;
+         cout << c << endl << flush;
        }
      }
 };
