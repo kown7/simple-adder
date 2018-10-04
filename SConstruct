@@ -5,4 +5,5 @@ env.Append(LIBS = ['systemc'])
 env.AppendUnique(LIBPATH = ['../systemc-2.3.2/lib-linux64'])
 
 env.Program('SimpleAdder.cpp')
-env.Program('test_SimpleAdderRtl.cpp')
+env.Program(['test_SimpleAdderRtl.cpp',
+             'SimpleAdderRtl.cpp'])

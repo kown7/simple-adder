@@ -1,6 +1,6 @@
 #include <systemc.h>
 
-#include "SimpleAdderRtl.cpp"
+#include "SimpleAdderRtl.hpp"
 
 
 int sc_main (int argc, char* argv[]) {
